@@ -4,6 +4,8 @@ const KEYS = {
   appointments: 'hospital_appointments',
   contacts: 'hospital_contacts',
   settings: 'hospital_settings',
+  adminCredentials: 'hospital_admin_credentials',
+  adminLoggedIn: 'hospital_admin_logged_in',
 };
 
 function safeGet(key, fallback) {
@@ -76,6 +78,8 @@ const defaultDoctors = [
   { id: 'doc-6', name: 'Dr. David Park', departmentId: 'dermatology', image: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&q=80&w=300&h=300', bio: 'Cosmetic and clinical dermatologist.', availability: 'Mon - Thu' },
 ];
 
+const defaultAdminCredentials = { username: 'admin', password: 'admin123' };
+
 function seedIfEmpty() {
   if (localStorage.getItem(KEYS.departments) != null) return;
   safeSet(KEYS.departments, defaultDepartments);
@@ -83,6 +87,11 @@ function seedIfEmpty() {
   safeSet(KEYS.appointments, []);
   safeSet(KEYS.contacts, []);
   safeSet(KEYS.settings, defaultSettings);
+}
+
+function seedAdminIfEmpty() {
+  if (localStorage.getItem(KEYS.adminCredentials) != null) return;
+  safeSet(KEYS.adminCredentials, defaultAdminCredentials);
 }
 
 export function getDepartments() {
@@ -145,4 +154,33 @@ export function getSettings() {
 export function setSettings(data) {
   const current = getSettings();
   return safeSet(KEYS.settings, { ...current, ...data });
+}
+
+export function getAdminCredentials() {
+  seedAdminIfEmpty();
+  return safeGet(KEYS.adminCredentials, defaultAdminCredentials);
+}
+
+export function setAdminCredentials({ username, password }) {
+  return safeSet(KEYS.adminCredentials, { username: username?.trim() || 'admin', password: password || '' });
+}
+
+export function isAdminLoggedIn() {
+  return localStorage.getItem(KEYS.adminLoggedIn) === 'true';
+}
+
+export function setAdminLoggedIn(loggedIn) {
+  try {
+    if (loggedIn) localStorage.setItem(KEYS.adminLoggedIn, 'true');
+    else localStorage.removeItem(KEYS.adminLoggedIn);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function checkAdminLogin(username, password) {
+  seedAdminIfEmpty();
+  const cred = getAdminCredentials();
+  return cred.username === (username || '').trim() && cred.password === (password || '');
 }
