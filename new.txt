@@ -1,0 +1,563 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Stethoscope, 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  User, 
+  ChevronRight, 
+  Activity, 
+  Heart, 
+  ShieldCheck,
+  Menu,
+  X,
+  CheckCircle2,
+  Users,
+  Send
+} from 'lucide-react';
+
+// --- DATA CONSTANTS ---
+
+const DEPARTMENTS = [
+  { id: 'cardiology', name: 'Cardiology', icon: Heart, description: 'Comprehensive heart care and cardiovascular surgery.' },
+  { id: 'neurology', name: 'Neurology', icon: Activity, description: 'Specialized treatment for brain and nervous system disorders.' },
+  { id: 'pediatrics', name: 'Pediatrics', icon: Users, description: 'Dedicated healthcare for infants, children, and adolescents.' },
+  { id: 'orthopedics', name: 'Orthopedics', icon: ShieldCheck, description: 'Advanced care for bone, joint, and muscle conditions.' },
+  { id: 'dermatology', name: 'Dermatology', icon: User, description: 'Expert solutions for skin, hair, and nail health.' },
+];
+
+const DOCTORS = [
+  { id: 1, name: 'Dr. Sarah Mitchell', dept: 'cardiology', image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=300&h=300', bio: 'Senior Cardiologist with 15+ years of experience.', availability: 'Mon - Fri' },
+  { id: 2, name: 'Dr. James Wilson', dept: 'cardiology', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300&h=300', bio: 'Specialist in Interventional Cardiology.', availability: 'Tue - Sat' },
+  { id: 3, name: 'Dr. Elena Rodriguez', dept: 'neurology', image: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&q=80&w=300&h=300', bio: 'Expert in neurodegenerative disorders.', availability: 'Mon - Wed' },
+  { id: 4, name: 'Dr. Michael Chen', dept: 'pediatrics', image: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&q=80&w=300&h=300', bio: 'Compassionate pediatric care specialist.', availability: 'Mon - Fri' },
+  { id: 5, name: 'Dr. Lisa Thompson', dept: 'orthopedics', image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=300&h=300', bio: 'Leading orthopedic surgeon and sports medicine expert.', availability: 'Wed - Sun' },
+  { id: 6, name: 'Dr. David Park', dept: 'dermatology', image: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&q=80&w=300&h=300', bio: 'Cosmetic and clinical dermatologist.', availability: 'Mon - Thu' },
+];
+
+// --- COMPONENTS ---
+
+const Navbar = ({ activeSection, setActiveSection }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const navItems = [
+    { id: 'home', label: 'Home' },
+    { id: 'departments', label: 'Departments' },
+    { id: 'doctors', label: 'Doctors' },
+    { id: 'about', label: 'About Us' },
+    { id: 'contact', label: 'Contact' }
+  ];
+
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-20">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveSection('home')}>
+            <div className="bg-blue-600 p-2 rounded-xl">
+              <Stethoscope className="text-white w-6 h-6" />
+            </div>
+            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+              LuminaCare
+            </span>
+          </div>
+
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-8">
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => setActiveSection(item.id)}
+                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                  activeSection === item.id ? 'text-blue-600' : 'text-slate-600'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+            <button 
+              onClick={() => setActiveSection('booking')}
+              className="bg-blue-600 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+            >
+              Book Appointment
+            </button>
+          </div>
+
+          {/* Mobile Toggle */}
+          <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
+            {isOpen ? <X /> : <Menu />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {isOpen && (
+        <div className="md:hidden bg-white border-t border-slate-100 p-4 space-y-4">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { setActiveSection(item.id); setIsOpen(false); }}
+              className="block w-full text-left px-4 py-2 text-slate-600 font-medium"
+            >
+              {item.label}
+            </button>
+          ))}
+          <button 
+             onClick={() => { setActiveSection('booking'); setIsOpen(false); }}
+             className="w-full bg-blue-600 text-white px-6 py-3 rounded-xl text-center font-semibold"
+          >
+            Book Appointment
+          </button>
+        </div>
+      )}
+    </nav>
+  );
+};
+
+export default function App() {
+  const [activeSection, setActiveSection] = useState('home');
+  const [filterDept, setFilterDept] = useState('all');
+  const [bookingStatus, setBookingStatus] = useState(null);
+  const [contactStatus, setContactStatus] = useState(null);
+
+  // Filter logic
+  const filteredDoctors = useMemo(() => {
+    if (filterDept === 'all') return DOCTORS;
+    return DOCTORS.filter(doc => doc.dept === filterDept);
+  }, [filterDept]);
+
+  const handleBooking = (e) => {
+    e.preventDefault();
+    setBookingStatus('loading');
+    setTimeout(() => {
+      setBookingStatus('success');
+    }, 1500);
+  };
+
+  const handleContact = (e) => {
+    e.preventDefault();
+    setContactStatus('loading');
+    setTimeout(() => {
+      setContactStatus('success');
+      setTimeout(() => setContactStatus(null), 3000); // Clear success message after 3s
+    }, 1200);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
+      <Navbar activeSection={activeSection} setActiveSection={setActiveSection} />
+
+      <main className="pt-20">
+        
+        {/* --- 4.2 HERO / BANNER SECTION --- */}
+        <section id="home" className="relative min-h-[90vh] flex items-center overflow-hidden">
+          <div className="absolute inset-0 z-0">
+            <img 
+              src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=2000" 
+              className="w-full h-full object-cover opacity-20"
+              alt="Hospital Interior"
+            />
+            <div className="absolute inset-0 bg-gradient-to-tr from-slate-50 via-white/80 to-transparent"></div>
+          </div>
+          
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <div className="max-w-3xl">
+              <span className="inline-block px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-bold uppercase tracking-wider mb-6">
+                Excellence in Healthcare
+              </span>
+              <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 leading-tight mb-8">
+                Your Health is Our <span className="text-blue-600">Top Priority</span>
+              </h1>
+              <p className="text-xl text-slate-600 mb-10 leading-relaxed">
+                Experience world-class medical services with a touch of compassion. LuminaCare Hospital combines cutting-edge technology with the expertise of top medical professionals to ensure you get the best care possible.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={() => setActiveSection('booking')}
+                  className="bg-blue-600 text-white px-8 py-4 rounded-2xl text-lg font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-xl shadow-blue-200"
+                >
+                  <Calendar className="w-5 h-5" />
+                  Book Your Visit
+                </button>
+                <button 
+                  onClick={() => setActiveSection('about')}
+                  className="bg-white text-slate-900 border border-slate-200 px-8 py-4 rounded-2xl text-lg font-bold hover:bg-slate-50 transition-all shadow-sm"
+                >
+                  Our Facility
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* --- 4.3 DEPARTMENT LIST --- */}
+        <section id="departments" className="py-24 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Our Specializations</h2>
+              <p className="text-slate-500 max-w-2xl mx-auto">Providing advanced care across multiple disciplines with specialized experts and modern infrastructure.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+              {DEPARTMENTS.map(dept => (
+                <div 
+                  key={dept.id}
+                  onClick={() => { setFilterDept(dept.id); setActiveSection('doctors'); }}
+                  className="group p-8 rounded-3xl border border-slate-100 bg-slate-50 hover:bg-blue-600 hover:border-blue-600 transition-all cursor-pointer text-center"
+                >
+                  <div className="mb-6 inline-flex p-4 rounded-2xl bg-white group-hover:bg-white/20 text-blue-600 group-hover:text-white transition-colors">
+                    <dept.icon className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-2 group-hover:text-white transition-colors">{dept.name}</h3>
+                  <p className="text-sm text-slate-500 group-hover:text-blue-100 transition-colors line-clamp-2">{dept.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* --- 4.4 DOCTOR LIST --- */}
+        <section id="doctors" className="py-24 bg-slate-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">Meet Our Experts</h2>
+                <p className="text-slate-500">Highly qualified doctors dedicated to your wellness.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={() => setFilterDept('all')}
+                  className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${filterDept === 'all' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                >
+                  All
+                </button>
+                {DEPARTMENTS.map(d => (
+                  <button 
+                    key={d.id}
+                    onClick={() => setFilterDept(d.id)}
+                    className={`px-5 py-2 rounded-full text-sm font-semibold transition-all ${filterDept === d.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                  >
+                    {d.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredDoctors.map(doc => (
+                <div key={doc.id} className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
+                  <div className="h-64 overflow-hidden relative">
+                    <img src={doc.image} alt={doc.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold uppercase text-blue-600 shadow-sm">
+                      {doc.dept}
+                    </div>
+                  </div>
+                  <div className="p-8">
+                    <h3 className="text-xl font-bold mb-1">{doc.name}</h3>
+                    <p className="text-blue-600 text-sm font-medium mb-4 capitalize">{doc.dept} Specialist</p>
+                    <p className="text-slate-500 text-sm mb-6 leading-relaxed">{doc.bio}</p>
+                    <div className="flex items-center justify-between pt-6 border-t border-slate-50">
+                      <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+                        <Clock className="w-4 h-4" />
+                        {doc.availability}
+                      </div>
+                      <button 
+                         onClick={() => setActiveSection('booking')}
+                         className="text-blue-600 text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all"
+                      >
+                        Book Appointment <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* --- 4.5 ABOUT THE HOSPITAL --- */}
+        <section id="about" className="py-24 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div className="relative">
+                <img 
+                  src="https://images.unsplash.com/photo-1504813184591-01592fd03cf7?auto=format&fit=crop&q=80&w=1000" 
+                  alt="Modern Facility" 
+                  className="rounded-3xl shadow-2xl relative z-10"
+                />
+                <div className="absolute -bottom-10 -right-10 bg-blue-600 p-8 rounded-3xl text-white shadow-2xl z-20 hidden md:block">
+                  <p className="text-4xl font-bold mb-1">25+</p>
+                  <p className="text-sm opacity-80 font-medium">Years of Excellence</p>
+                </div>
+                <div className="absolute -top-6 -left-6 w-32 h-32 bg-blue-100 rounded-full -z-0 opacity-50"></div>
+              </div>
+              <div>
+                <h2 className="text-3xl md:text-5xl font-bold mb-8 leading-tight">We Are Committed To Your Better Health</h2>
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                      <CheckCircle2 />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-lg mb-1">Modern Equipment</h4>
+                      <p className="text-slate-500 text-sm">Our facility is equipped with the latest diagnostic and surgical technology.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                      <CheckCircle2 />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-lg mb-1">Expert Medical Team</h4>
+                      <p className="text-slate-500 text-sm">Our doctors are board-certified and leaders in their respective fields.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                      <CheckCircle2 />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-lg mb-1">Patient-Centered Care</h4>
+                      <p className="text-slate-500 text-sm">We believe in a holistic approach where patient comfort and safety come first.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* --- 4.7 APPOINTMENT BOOKING --- */}
+        <section id="booking" className="py-24 bg-blue-600 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -mr-48 -mt-48"></div>
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl -ml-48 -mb-48"></div>
+          </div>
+          
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden p-8 md:p-12">
+              <div className="text-center mb-10">
+                <h2 className="text-3xl font-bold mb-3">Book an Appointment</h2>
+                <p className="text-slate-500">Fill out the form below and we will contact you within 24 hours.</p>
+              </div>
+
+              {bookingStatus === 'success' ? (
+                <div className="text-center py-20 bg-blue-50 rounded-2xl">
+                  <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-white animate-bounce">
+                    <CheckCircle2 className="w-10 h-10" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">Booking Confirmed!</h3>
+                  <p className="text-slate-600 mb-8">Thank you for choosing LuminaCare. A confirmation email has been sent.</p>
+                  <button 
+                    onClick={() => setBookingStatus(null)}
+                    className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all"
+                  >
+                    Book Another
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleBooking} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Full Name</label>
+                    <input required type="text" placeholder="John Doe" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
+                    <input required type="email" placeholder="john@example.com" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Select Department</label>
+                    <select required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none">
+                      <option value="">Select Department</option>
+                      {DEPARTMENTS.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Select Doctor</label>
+                    <select required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none">
+                      <option value="">Select Doctor</option>
+                      {DOCTORS.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Appointment Date</label>
+                    <input required type="date" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Phone Number</label>
+                    <input required type="tel" placeholder="+1 234 567 890" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Additional Message (Optional)</label>
+                    <textarea rows="4" placeholder="How can we help you?" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all"></textarea>
+                  </div>
+                  <div className="md:col-span-2 pt-4">
+                    <button 
+                      type="submit" 
+                      disabled={bookingStatus === 'loading'}
+                      className="w-full bg-blue-600 text-white py-5 rounded-2xl text-lg font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3"
+                    >
+                      {bookingStatus === 'loading' ? (
+                        <>
+                          <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        'Confirm Appointment Booking'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* --- 4.6 CONTACT SECTION (INCLUDES FORM) --- */}
+        <section id="contact" className="py-24 bg-slate-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Get In Touch</h2>
+              <p className="text-slate-500 max-w-2xl mx-auto">Have questions about our services? Reach out to our support team or visit us at our main campus.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+              {/* Info Cards Column */}
+              <div className="space-y-6">
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex items-start gap-6">
+                  <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0">
+                    <Phone className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg mb-1">Emergency Call</h4>
+                    <p className="text-slate-600 font-medium">+1 (800) 999-0000</p>
+                    <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">Available 24/7</p>
+                  </div>
+                </div>
+                
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex items-start gap-6">
+                  <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0">
+                    <Mail className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg mb-1">Email Us</h4>
+                    <p className="text-slate-600 font-medium">support@luminacare.org</p>
+                    <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">Typical reply: 2 hours</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex items-start gap-6">
+                  <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg mb-1">Our Location</h4>
+                    <p className="text-slate-600 font-medium">123 Wellness Ave, NY</p>
+                    <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">MedCity Central</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Form Column */}
+              <div className="lg:col-span-2">
+                <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
+                  <h3 className="text-2xl font-bold mb-8">Send us a Message</h3>
+                  
+                  {contactStatus === 'success' ? (
+                    <div className="py-12 text-center animate-in fade-in zoom-in duration-300">
+                      <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle2 className="w-8 h-8" />
+                      </div>
+                      <h4 className="text-xl font-bold text-slate-900">Message Sent!</h4>
+                      <p className="text-slate-500 mt-2">We'll get back to you shortly.</p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleContact} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Your Name</label>
+                        <input required type="text" placeholder="Jane Smith" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Email Address</label>
+                        <input required type="email" placeholder="jane@example.com" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Subject</label>
+                        <input required type="text" placeholder="How can we help?" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Message</label>
+                        <textarea required rows="4" placeholder="Tell us more about your inquiry..." className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm resize-none"></textarea>
+                      </div>
+                      <div className="md:col-span-2">
+                        <button 
+                          type="submit"
+                          disabled={contactStatus === 'loading'}
+                          className="group relative w-full bg-slate-900 text-white py-5 rounded-2xl font-bold overflow-hidden hover:bg-blue-600 transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-70"
+                        >
+                          {contactStatus === 'loading' ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          ) : (
+                            <>
+                              Send Message
+                              <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* --- FOOTER --- */}
+        <footer className="bg-slate-900 text-slate-400 py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+              <div className="col-span-1 md:col-span-2">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="bg-blue-600 p-2 rounded-lg">
+                    <Stethoscope className="text-white w-5 h-5" />
+                  </div>
+                  <span className="text-2xl font-bold text-white">LuminaCare</span>
+                </div>
+                <p className="max-w-sm mb-6 leading-relaxed">
+                  Dedicated to providing accessible, high-quality healthcare to our community through innovation, compassion, and clinical excellence.
+                </p>
+              </div>
+              <div>
+                <h4 className="text-white font-bold mb-6">Quick Links</h4>
+                <ul className="space-y-4 text-sm">
+                  <li><button onClick={() => setActiveSection('home')} className="hover:text-blue-400 transition-colors">Home</button></li>
+                  <li><button onClick={() => setActiveSection('departments')} className="hover:text-blue-400 transition-colors">Specializations</button></li>
+                  <li><button onClick={() => setActiveSection('doctors')} className="hover:text-blue-400 transition-colors">Our Doctors</button></li>
+                  <li><button onClick={() => setActiveSection('booking')} className="hover:text-blue-400 transition-colors">Appointments</button></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-white font-bold mb-6">Legal</h4>
+                <ul className="space-y-4 text-sm">
+                  <li><a href="#" className="hover:text-blue-400 transition-colors">Privacy Policy</a></li>
+                  <li><a href="#" className="hover:text-blue-400 transition-colors">Terms of Service</a></li>
+                  <li><a href="#" className="hover:text-blue-400 transition-colors">Patient Rights</a></li>
+                </ul>
+              </div>
+            </div>
+            <div className="pt-12 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
+              <p className="text-xs">© 2024 LuminaCare Hospital Management. All rights reserved.</p>
+              <div className="flex gap-6 text-xs uppercase tracking-widest font-bold">
+                <a href="#" className="hover:text-white transition-colors">Facebook</a>
+                <a href="#" className="hover:text-white transition-colors">Twitter</a>
+                <a href="#" className="hover:text-white transition-colors">LinkedIn</a>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </main>
+    </div>
+  );
+}
